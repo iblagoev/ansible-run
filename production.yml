@@ -9,6 +9,9 @@ all:
     nas:
       ansible_connection: ssh
       ansible_host: ironforge
+    ubnt:
+      ansible_connection: ssh
+      ansible_host: ubnt
   vars:
     container_name: portainer
     container_name_agent: portainer_agent

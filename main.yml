@@ -35,4 +35,16 @@
     - name: Pulling latest agent image
       shell: command {{ nas_command }} pull {{ image_name_agent }}
     - name: Starting agent
-      shell: command {{ nas_command }} run -d {{ agent_port }} --name {{ container_name_agent }} --restart=always {{ nas_mount }} {{ image_name_agent }}     
+      shell: command {{ nas_command }} run -d {{ agent_port }} --name {{ container_name_agent }} --restart=always {{ nas_mount }} {{ image_name_agent }}
+- name: Stop/Update/Start Portainer Agent on Ubuntu Server
+  hosts: ubnt
+  gather_facts: False
+  tasks:
+    - name: Stopping agent
+      shell: command docker stop {{ container_name_agent }}
+    - name: Removing agent
+      shell: command docker rm {{ container_name_agent }}
+    - name: Pulling latest agent image
+      shell: command docker pull {{ image_name_agent }}
+    - name: Starting agent
+      shell: command {{ main_command }} {{ agent_port }} --name {{ container_name_agent }} --restart=always {{ hass_mount }} {{ image_name_agent }}
