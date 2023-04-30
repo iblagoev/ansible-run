@@ -1,0 +1,23 @@
+all:
+  hosts:
+    pi:
+      ansible_connection: ssh
+      ansible_host: pi
+    blackhole:
+      ansible_connection: ssh
+      ansible_host: blackhole
+    son:
+      ansible_connection: ssh
+      ansible_host: son
+    rad:
+      ansible_connection: ssh
+      ansible_host: rad
+    seer:
+      ansible_connection: ssh
+      ansible_host: seer
+    baz:
+      ansible_connection: ssh
+      ansible_host: baz
+    db:
+      ansible_connection: ssh
+      ansible_host: db

@@ -1,4 +1,4 @@
-all:
+pall:
   hosts:
     pi:
       ansible_connection: ssh

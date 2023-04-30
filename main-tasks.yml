@@ -1,0 +1,82 @@
+- hosts: all
+  become: true
+  become_user: root
+  gather_facts: false
+  tasks:
+    - name: Update apt repo and cache
+      ansible.builtin.apt:
+        update_cache: yes
+        force_apt_get: yes
+        cache_valid_time: 3600
+    #   register: aptout
+    # - debug: var=aptout
+
+    - name: Upgrade all packages on servers
+      apt:
+        upgrade: safe
+        force_apt_get: yes
+    #   register: aptout
+    # - debug: var=aptout
+
+    - name: Check if a reboot is needed on all servers
+      register: reboot_required_file
+      stat: path=/var/run/reboot-required get_md5=no
+
+    # - name: Reboot
+    #   reboot:
+    #   when: reboot_required.stat.exists
+
+- hosts: pi
+  tasks:
+    - name: Ensure pihole-FTL service is running
+      service:
+        name: pihole-FTL
+        state: started
+      become: false
+
+- hosts: son
+  tasks:
+    - name: Ensure Sonarr service is running
+      service:
+        name: sonarr
+        state: started
+      become: true
+
+- hosts: rad
+  tasks:
+    - name: Ensure Radarr service is running
+      service:
+        name: radarr
+        state: started
+      become: true
+
+- hosts: baz
+  tasks:
+    - name: Ensure Bazarr service is running
+      service:
+        name: bazarr
+        state: started
+      become: true
+
+- hosts: seer
+  tasks:
+    - name: Ensure docker container is running and healthy
+      docker_container_info:
+        name: jellyseerr
+      become: true
+
+- hosts: db
+  tasks:
+    - name: Ensure MongoD service is running
+      service:
+        name: mongod
+        state: started
+      become: true
+
+- hosts: blackhole
+  tasks:
+    - name: Ensure pihole-FTL service is running
+      service:
+        name: pihole-FTL
+        state: started
+      become: false
