@@ -1,23 +1,68 @@
-all:
+rpi:
   hosts:
-    pi:
+    raspberry-pi4:
       ansible_connection: ssh
       ansible_host: pi
-    blackhole:
+      ansible_python_interpreter: /usr/bin/python3.11
+    raspberry-pi3:
       ansible_connection: ssh
-      ansible_host: blackhole
-    son:
+      ansible_host: pi3
+      ansible_python_interpreter: /usr/bin/python3.11
+
+dns:
+  hosts:
+    primary-dns:
       ansible_connection: ssh
-      ansible_host: son
-    rad:
+      ansible_host: pdns
+      ansible_python_interpreter: /usr/bin/python3.11
+    secondary-dns:
       ansible_connection: ssh
-      ansible_host: rad
-    seer:
+      ansible_host: sdns
+      ansible_python_interpreter: /usr/bin/python3.11
+
+builders:
+  hosts:
+    cicd:
       ansible_connection: ssh
-      ansible_host: seer
-    baz:
+      ansible_host: tc
+
+dockerhosts:
+  hosts:
+    graylog:
       ansible_connection: ssh
-      ansible_host: baz
-    db:
+      ansible_host: log
+      ansible_python_interpreter: /usr/bin/python3.11
+    harbor:
+      ansible_connection: ssh
+      ansible_host: harbor
+      ansible_python_interpreter: /usr/bin/python3.11
+    react:
+      ansible_connection: ssh
+      ansible_host: react
+      ansible_python_interpreter: /usr/bin/python3.11
+
+opensuse:
+  hosts:
+    suse-vr:
+      ansible_connection: ssh
+      ansible_host: susevr
+      ansible_python_interpreter: /usr/bin/python3.12
+    boinc:
+      ansible_connection: ssh
+      ansible_host: boinc
+      ansible_python_interpreter: /usr/bin/python3.12
+    boinc-vr:
+      ansible_connection: ssh
+      ansible_host: boincvr
+      ansible_python_interpreter: /usr/bin/python3.12
+    dockyard:
+      ansible_connection: ssh
+      ansible_host: yard
+      ansible_python_interpreter: /usr/bin/python3.12
+
+databases:
+  hosts:
+    mongo-db:
       ansible_connection: ssh
       ansible_host: db
+      ansible_python_interpreter: /usr/bin/python3.11

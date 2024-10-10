@@ -1,4 +1,5 @@
-- hosts: all
+- name: Updating Raspberry Pi 3/4
+  hosts: rpi
   become: true
   become_user: root
   gather_facts: false
@@ -8,75 +9,210 @@
         update_cache: yes
         force_apt_get: yes
         cache_valid_time: 3600
-    #   register: aptout
-    # - debug: var=aptout
+        autoremove: yes
 
-    - name: Upgrade all packages on servers
+    - name: Upgrade all packages
       apt:
         upgrade: safe
         force_apt_get: yes
-    #   register: aptout
-    # - debug: var=aptout
+      register: update_result
 
-    - name: Check if a reboot is needed on all servers
+    - name: Show updated packages
+      debug:
+        msg: "Packages updated: {{ update_result.changes.packages }}"
+      when: update_result.changes.packages is defined
+
+    - name: Check if a reboot is needed
       register: reboot_required_file
-      stat: path=/var/run/reboot-required get_md5=no
+      stat: path=/var/run/reboot-required
 
-    # - name: Reboot
-    #   reboot:
-    #   when: reboot_required.stat.exists
+    - name: Reboot
+      reboot:
+        msg: "Reboot initiated by Ansible for kernel updates"
+        connect_timeout: 5
+        reboot_timeout: 300
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: uptime
+      when: reboot_required_file.stat.exists
 
-- hosts: pi
+- name: Updating DNS servers
+  hosts: dns
+  become: true
+  become_user: root
+  gather_facts: false
+  serial: 1
   tasks:
-    - name: Ensure pihole-FTL service is running
+    - name: Update apt repo and cache
+      ansible.builtin.apt:
+        update_cache: yes
+        force_apt_get: yes
+        cache_valid_time: 3600
+        autoremove: yes
+      register: aptout
+    - debug: var=aptout
+
+    - name: Upgrade all packages
+      apt:
+        upgrade: safe
+        force_apt_get: yes
+      register: aptout
+    - debug: var=aptout
+
+    - name: Check if a reboot is needed
+      register: reboot_required_file
+      stat: path=/var/run/reboot-required
+
+    - name: Reboot
+      reboot:
+        msg: "Reboot initiated by Ansible for kernel updates"
+        connect_timeout: 5
+        reboot_timeout: 300
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: uptime
+      register: reboot_result
+      when: reboot_required_file.stat.exists
+
+  handlers:
+    - name: Check if DNS service is started
+      systemd:
+        name: pihole-FTL
+        state: started
+      register: dns_check_result
+      when: reboot_result is changed
+
+    - name: Start service if it's not running
       service:
         name: pihole-FTL
         state: started
-      become: false
+      when: dns_check_result is failed
 
-- hosts: son
+- name: Updating MongoDB Host
+  hosts: databases
+  become: true
+  become_user: root
+  gather_facts: false
+  serial: 1
   tasks:
-    - name: Ensure Sonarr service is running
-      service:
-        name: sonarr
+    - name: Update apt repo and cache
+      ansible.builtin.apt:
+        update_cache: yes
+        force_apt_get: yes
+        cache_valid_time: 3600
+        autoremove: yes
+
+    - name: Upgrade all packages
+      apt:
+        upgrade: safe
+        force_apt_get: yes
+      register: update_result
+
+    - name: Show updated packages
+      debug:
+        msg: "Packages updated: {{ update_result.changes.packages }}"
+      when: update_result.changes.packages is defined
+
+    - name: Check if a reboot is needed
+      register: reboot_required_file
+      stat: path=/var/run/reboot-required
+
+    - name: Reboot
+      reboot:
+        msg: "Reboot initiated by Ansible for kernel updates"
+        connect_timeout: 5
+        reboot_timeout: 300
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: uptime
+      register: reboot_result
+      when: reboot_required_file.stat.exists
+
+    - name: Check if MongoDB service is started
+      wait_for:
+        port: 27017
         state: started
-      become: true
+      register: mongo_check_result
 
-- hosts: rad
-  tasks:
-    - name: Ensure Radarr service is running
-      service:
-        name: radarr
-        state: started
-      become: true
-
-- hosts: baz
-  tasks:
-    - name: Ensure Bazarr service is running
-      service:
-        name: bazarr
-        state: started
-      become: true
-
-- hosts: seer
-  tasks:
-    - name: Ensure docker container is running and healthy
-      docker_container_info:
-        name: jellyseerr
-      become: true
-
-- hosts: db
-  tasks:
-    - name: Ensure MongoD service is running
+    - name: Start MongoDB service if it's not running
       service:
         name: mongod
         state: started
-      become: true
+      when: mongo_check_result is failed
 
-- hosts: blackhole
+- name: Update OpenSUSE hosts and reboot if necessary
+  hosts: opensuse
+  become_user: root
+  become: true
+  gather_facts: false
   tasks:
-    - name: Ensure pihole-FTL service is running
-      service:
-        name: pihole-FTL
-        state: started
-      become: false
+    - name: Update all packages on OpenSUSE
+      community.general.zypper:
+        name: "*"
+        state: latest
+        type: package
+        update_cache: true
+      register: update_result
+
+    - name: Apply all available patches
+      community.general.zypper:
+        name: "*"
+        state: latest
+        type: patch
+
+    - name: Show updated packages
+      debug:
+        msg: "Packages updated: {{ update_result.changes.packages }}"
+      when: update_result.changes.packages is defined
+
+    - name: Check if a reboot is required (by checking for changes in updates)
+      shell: 'zypper ps | grep "Reboot is suggested"'
+      register: reboot_check
+      ignore_errors: true
+
+    - name: Debug reboot check
+      debug:
+        var: reboot_check.stdout
+
+    - name: Reboot the server if necessary
+      reboot:
+        msg: "Rebooting after package updates"
+      when: reboot_check.stdout != ''
+
+- name: Updating docker hosts
+  hosts: dockerhosts
+  become: true
+  become_user: root
+  gather_facts: false
+  tasks:
+    - name: Update apt repo and cache
+      ansible.builtin.apt:
+        update_cache: yes
+        force_apt_get: yes
+        cache_valid_time: 3600
+        autoremove: yes
+
+    - name: Upgrade all packages
+      apt:
+        upgrade: safe
+        force_apt_get: yes
+      register: update_result
+
+    - name: Show updated packages
+      debug:
+        msg: "Packages updated: {{ update_result.changes.packages }}"
+      when: update_result.changes.packages is defined
+
+    - name: Check if a reboot is needed
+      register: reboot_required_file
+      stat: path=/var/run/reboot-required
+
+    - name: Reboot
+      reboot:
+        msg: "Reboot initiated by Ansible for kernel updates"
+        connect_timeout: 5
+        reboot_timeout: 300
+        pre_reboot_delay: 0
+        post_reboot_delay: 30
+        test_command: uptime
+      when: reboot_required_file.stat.exists
